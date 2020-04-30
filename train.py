@@ -18,6 +18,7 @@ from torch.utils.data.distributed import DistributedSampler
 from DataProcess import SourceDataset, linear_collate
 from models.optimizer import RAdam
 from models.DPCNN import DPCNN
+import sys
 
 global_label_cnt = 4
 global_vocab_size = 5414 + 2
@@ -28,10 +29,12 @@ global_batch_size = 128
 global_num_workers = 10
 global_learning_rate = 1e-3
 global_epoch_count = 300
+global_t_max = 64
+global_eta_min = 1e-9
 
 
 # Important Parameters
-def train(dataset, model, device, rank=0):
+def train(dataset, model_file, device, rank=0):
     torch.cuda.set_device(device)
     dataset_train, dataset_eval_in, dataset_eval_out = dataset
     dataset_train = SourceDataset(dataset_train)
@@ -47,6 +50,7 @@ def train(dataset, model, device, rank=0):
     dataloader_eval_in = DataLoader(dataset_eval_in, shuffle=False, num_workers=global_num_workers, batch_size=1, collate_fn=linear_collate)
     dataloader_eval_out = DataLoader(dataset_eval_out, shuffle=False, num_workers=global_num_workers, batch_size=1, collate_fn=linear_collate)
     optimizer = RAdam(model.parameters(), lr=global_learning_rate)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=global_t_max, eta_min=global_eta_min)
     t1 = time.time()
     best_in_eval = 0.0
     best_out_eval = 0.0
@@ -76,14 +80,15 @@ def train(dataset, model, device, rank=0):
         with torch.no_grad():
             for data, label in dataset_eval_in:
                 data, label = data.to(device), label.to(device)
-                output = model(data)
-                loss = criterion(output, label)
+                output_raw = model(data)
+                loss = criterion(output_raw, label)
+                _, output = torch.max(output_raw, 1)
                 total_loss_eval_in.append(loss.item())
                 if output >= 2 and label >= 2:
                     coarse_group_correct[0] = coarse_group_correct[0] + 1
                 elif output < 2 and label < 2:
                     coarse_group_correct[0] = coarse_group_correct[0] + 1
-                total_group[0] = total_group + 1
+                total_group[0] = total_group[0] + 1
                 if output == label:
                     deep_group_correct[0] = deep_group_correct[0] + 1
                 bar2.update()
@@ -91,14 +96,15 @@ def train(dataset, model, device, rank=0):
 
             for data, label in dataset_eval_out:
                 data, label = data.to(device), label.to(device)
-                output = model(data)
-                loss = criterion(output, label)
+                output_raw = model(data)
+                loss = criterion(output_raw, label)
+                _, output = torch.max(output_raw, 1)
                 total_loss_eval_out.append(loss.item())
                 if output >= 2 and label >= 2:
                     coarse_group_correct[1] = coarse_group_correct[1] + 1
                 elif output < 2 and label < 2:
                     coarse_group_correct[1] = coarse_group_correct[1] + 1
-                total_group[1] = total_group + 1
+                total_group[1] = total_group[1] + 1
                 if output == label:
                     deep_group_correct[1] = deep_group_correct[1] + 1
                 bar3.update()
@@ -106,4 +112,16 @@ def train(dataset, model, device, rank=0):
         epoch_train_loss = np.mean(total_loss)
         epoch_eval_in_loss = np.mean(total_loss_eval_in)
         epoch_eval_out_loss = np.mean(total_loss_eval_out)
-        print('(3/3)Report: Epoch #{:02d}: Training loss: {:.06F}, Eval Loss: (I {:.06F})(O {:.06F}), Eval Accuracy: (I {:.03F}%)(O {:.03F}%), {:.03F}%, lr: {:.06F}')
+        print('(3/3)Report: Epoch #{:02d}: Training loss: {:.06F}, Eval Loss: (I {:.06F})(O {:.06F}), Eval Accuracy: (I {:.03F}%-{:.03F}%)(O {:.03F}%-{:.03F}%), {:.03F}%, lr: {:.06F}'.format(
+            epoch, epoch_train_loss, epoch_eval_in_loss, epoch_eval_out_loss, 100.0 * coarse_group_correct[0] / total_group[0], 100.0 * deep_group_correct[0] / total_group[0],
+            100.0 * coarse_group_correct[1] / total_group[1], 100.0 * deep_group_correct[1] / total_group[1], 100.0 * (coarse_group_correct[0] + coarse_group_correct[1]) / (total_group[0] + total_group[1]),
+            scheduler.get_lr()[0]
+        ))
+        state_dict = model.state_dict()
+        torch.save(state_dict, '{}.{:03d}'.format(model_file, epoch))
+        scheduler.step()
+        torch.cuda.empty_cache()
+
+
+if __name__ == '__main__':
+    train(sys.argv[1], sys.argv[2], 1)
