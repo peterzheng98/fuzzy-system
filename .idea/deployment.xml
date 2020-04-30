@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" autoUpload="Always" serverName="peterzheng98@172.16.2.249:22092">
+    <serverData>
+      <paths name="peterzheng98@172.16.2.249:22092">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/peterzheng98/workspaces/nlp_course" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
+    </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
+  </component>
+</project>

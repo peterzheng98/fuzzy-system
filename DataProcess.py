@@ -22,7 +22,7 @@ class SourceDataset(Dataset):
 
     def __getitem__(self, index):
         sentence, label = self.df[['data', 'label']].iloc[index]
-        sentence = json.dumps(sentence)
+        sentence = json.loads(sentence)
         sentence_list = padding(sentence, self.max_len)
         data = np.array(sentence_list)
         return data, label
