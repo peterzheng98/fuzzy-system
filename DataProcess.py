@@ -25,6 +25,7 @@ class SourceDataset(Dataset):
         sentence = json.loads(sentence)
         sentence_list = padding(sentence, self.max_len)
         data = np.array(sentence_list)
+        label = 0 if label == 0 else 1
         return data, label
 
     def __len__(self):

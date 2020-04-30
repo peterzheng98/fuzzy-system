@@ -20,7 +20,7 @@ from models.optimizer import RAdam
 from models.DPCNN import DPCNN
 import sys
 
-global_label_cnt = 4
+global_label_cnt = 2
 global_vocab_size = 5414 + 2
 global_embed_size = 128
 global_hidden_size = 128
