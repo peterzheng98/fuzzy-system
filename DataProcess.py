@@ -1,9 +1,13 @@
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
+import json
+import numpy as np
 
 
 def padding(seq, maxlen):
+    for i, d in enumerate(seq):
+        seq[i] = seq[i] + 1
     if len(seq) > maxlen:
         return seq[:maxlen]
     seq = [0]*(maxlen-len(seq)) + seq
@@ -12,22 +16,15 @@ def padding(seq, maxlen):
 
 class SourceDataset(Dataset):
     def __init__(self, dataset, vocab, max_len):
-        self.df = pd.read_csv(dataset, sep='\t', header=0)
-        self._labels = self.df['label'].unique().tolist()
-        self._labels.sort()
+        self.df = pd.read_csv(dataset)
         self.vocab = vocab
         self.max_len = max_len
 
-    @property
-    def labels(self):
-        return self._labels
-
     def __getitem__(self, index):
-        code, label = self.df[['code', 'label']].iloc[index]
-        code_list = [self.vocab[char] if char in self.vocab else 0 for char in code]
-        code_list = padding(code_list, self.max_len)
-        data = np.array(code_list)
-        label = label - 1
+        sentence, label = self.df[['data', 'label']].iloc[index]
+        sentence = json.dumps(sentence)
+        sentence_list = padding(sentence, self.max_len)
+        data = np.array(sentence_list)
         return data, label
 
     def __len__(self):
