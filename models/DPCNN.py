@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class AvgPoolLSTM(nn.Module):
@@ -56,6 +57,7 @@ class DPCNN(nn.Module):
         self.residual_layer = self._make_layer(num_layers, hidden_size, kernel_size=3, padding=1, downsample=True)
         self.globalpool = nn.AdaptiveAvgPool2d((None, 1))
         self.fc = nn.Linear(hidden_size, num_labels)
+        self.activation_layer = nn.Softmax()
 
     def _make_layer(self, num_layers, channels, kernel_size, padding, downsample):
         layers = []
@@ -71,4 +73,5 @@ class DPCNN(nn.Module):
         output = self.residual_layer(output)
         output = self.globalpool(output).squeeze()
         output = self.fc(output)
+        output = self.activation_layer(output)
         return output

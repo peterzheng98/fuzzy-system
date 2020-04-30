@@ -29,3 +29,7 @@ class SourceDataset(Dataset):
 
     def __len__(self):
         return len(self.df)
+
+
+def linear_collate(samples):
+    return torch.tensor(tuple([i[0] for i in samples])).long(), torch.tensor(tuple(i[1] for i in samples)).long()
