@@ -12,7 +12,7 @@ def padding(seq, maxlen):
 
 class SourceDataset(Dataset):
     def __init__(self, dataset, vocab, max_len):
-        self.df = pd.read_csv(dataset, sep='\t')
+        self.df = pd.read_csv(dataset, sep='\t', header=0)
         self._labels = self.df['label'].unique().tolist()
         self._labels.sort()
         self.vocab = vocab
